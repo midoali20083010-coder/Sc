@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Steam Gift Card Checker</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #171a21;
+      color: #c6d4df;
+      font-family: Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 24px 12px;
+    }
+    .card {
+      background: #1b2838;
+      border-radius: 6px;
+      width: 100%;
+      max-width: 480px;
+      overflow: hidden;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+    }
+    .header {
+      background: #2a475e;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid #1b2838;
+    }
+    .header-icon { font-size: 28px; }
+    .header h1 {
+      font-size: 15px;
+      color: #66c0f4;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .header p { font-size: 11px; color: #8f98a0; margin-top: 2px; }
+    .tabs { display: flex; border-bottom: 2px solid #2a475e; }
+    .tab {
+      flex: 1; padding: 12px; text-align: center;
+      font-size: 13px; cursor: pointer; color: #8f98a0;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px; transition: all 0.15s; user-select: none;
+    }
+    .tab.active { color: #66c0f4; border-bottom-color: #66c0f4; background: #1e2f3e; }
+    .pane { display: none; padding: 20px; }
+    .pane.active { display: block; }
+    input[type="text"], textarea {
+      width: 100%; padding: 12px 14px;
+      background: #2a475e; border: 1px solid #4f7891;
+      border-radius: 4px; color: #c6d4df;
+      font-size: 14px; font-family: monospace;
+      letter-spacing: 0.05em; outline: none; transition: border-color 0.15s;
+    }
+    input[type="text"]:focus, textarea:focus { border-color: #66c0f4; }
+    input::placeholder, textarea::placeholder {
+      color: #4f7891; font-family: Arial, sans-serif; letter-spacing: 0;
+    }
+    textarea { height: 110px; resize: vertical; margin-bottom: 12px; line-height: 1.6; }
+    .row { display: flex; gap: 10px; margin-top: 10px; }
+    .row input { flex: 1; margin: 0; }
+    button {
+      padding: 12px 20px; background: #4c6b22; border: none;
+      border-radius: 4px; color: #c6e86b; font-size: 13px;
+      font-weight: bold; cursor: pointer; transition: background 0.15s; white-space: nowrap;
+    }
+    button:hover  { background: #5d8428; }
+    button:active { background: #3a5219; }
+    button:disabled { background: #2a3a1a; color: #5a7a30; cursor: default; }
+    .btn-full { width: 100%; }
+    .result {
+      margin-top: 14px; padding: 13px 15px;
+      border-radius: 4px; font-size: 13px; line-height: 1.5; display: none;
+    }
+    .result.show    { display: block; }
+    .result.valid   { background: #0d2b0d; border: 1px solid #4caf50; color: #81c784; }
+    .result.invalid { background: #2b0d0d; border: 1px solid #e53935; color: #ef9a9a; }
+    .result.checking{ background: #0d1f2b; border: 1px solid #66c0f4; color: #90caf9; }
+    .result.error   { background: #2b1f0d; border: 1px solid #ff9800; color: #ffcc80; }
+    .progress-wrap { margin-top: 14px; display: none; }
+    .progress-track { height: 4px; background: #2a475e; border-radius: 2px; overflow: hidden; }
+    .progress-fill { height: 100%; background: #66c0f4; width: 0%; transition: width 0.3s; }
+    .progress-label { font-size: 11px; color: #8f98a0; margin-top: 6px; text-align: right; }
+    .bulk-list {
+      margin-top: 14px; border: 1px solid #2a475e; border-radius: 4px;
+      overflow: hidden; display: none; max-height: 300px; overflow-y: auto;
+    }
+    .bulk-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 9px 12px; border-bottom: 1px solid #1e2a35;
+      font-family: monospace; font-size: 12px;
+    }
+    .bulk-row:last-child { border-bottom: none; }
+    .bulk-row:nth-child(even) { background: #1e2a35; }
+    .badge {
+      font-size: 10px; padding: 3px 10px; border-radius: 10px;
+      font-weight: bold; font-family: Arial, sans-serif;
+      min-width: 80px; text-align: center;
+    }
+    .badge.valid    { background: #1a4a1a; color: #81c784; }
+    .badge.invalid  { background: #4a1a1a; color: #ef9a9a; }
+    .badge.checking { background: #1a2a4a; color: #90caf9; }
+    .badge.error    { background: #3a2a0a; color: #ffcc80; }
+    .summary {
+      margin-top: 10px; font-size: 12px; color: #8f98a0;
+      text-align: right; display: none;
+    }
+    .info-box {
+      background: #0d1f2b; border: 1px solid #2a475e;
+      border-radius: 4px; padding: 10px 13px;
+      font-size: 11px; color: #8f98a0; margin-bottom: 14px; line-height: 1.6;
+    }
+    .info-box span { color: #66c0f4; }
+    .step-box {
+      background: #0d2b1a; border: 1px solid #2a5e3a;
+      border-radius: 4px; padding: 12px 14px;
+      font-size: 12px; color: #81c784; margin-bottom: 14px; line-height: 1.8;
+    }
+    .step-box strong { color: #c6e86b; display: block; margin-bottom: 4px; font-size: 13px; }
+  </style>
+</head>
+<body>
+<div class="card">
+
+  <div class="header">
+    <div class="header-icon">🎮</div>
+    <div>
+      <h1>Steam Gift Card Checker</h1>
+      <p>Check if a Steam wallet code is valid</p>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('single')">Single Check</div>
+    <div class="tab"        onclick="switchTab('bulk')">Bulk Check</div>
+    <div class="tab"        onclick="switchTab('guide')">How To Use</div>
+  </div>
+
+  <!-- SINGLE -->
+  <div class="pane active" id="pane-single">
+    <div class="info-box">
+      Open this page from <span>store.steampowered.com</span> bookmark — not from a file. See the <strong>How To Use</strong> tab.
+    </div>
+    <div class="row">
+      <input type="text" id="single-input" placeholder="XXXXX-XXXXX-XXXXX" maxlength="17" />
+      <button id="single-btn" onclick="runSingle()">Check</button>
+    </div>
+    <div class="result" id="single-result"></div>
+  </div>
+
+  <!-- BULK -->
+  <div class="pane" id="pane-bulk">
+    <div class="info-box">
+      One code per line. Must be opened correctly — see <strong>How To Use</strong> tab.
+    </div>
+    <textarea id="bulk-input" placeholder="XXXXX-XXXXX-XXXXX&#10;XXXXX-XXXXX-XXXXX&#10;XXXXX-XXXXX-XXXXX"></textarea>
+    <button class="btn-full" id="bulk-btn" onclick="runBulk()">Check All Codes</button>
+    <div class="progress-wrap" id="progress-wrap">
+      <div class="progress-track">
+        <div class="progress-fill" id="progress-fill"></div>
+      </div>
+      <div class="progress-label" id="progress-label">0 / 0</div>
+    </div>
+    <div class="bulk-list" id="bulk-list"></div>
+    <div class="summary"   id="summary"></div>
+  </div>
+
+  <!-- GUIDE -->
+  <div class="pane" id="pane-guide">
+    <div class="step-box">
+      <strong>Why it gets blocked</strong>
+      Browsers block requests to Steam when the page runs from a local file (file://). 
+      The fix is to make Kiwi think this page IS a Steam page.
+    </div>
+    <div class="step-box">
+      <strong>Step 1 — Save this file</strong>
+      Download steam-checker.html to your phone storage.
+    </div>
+    <div class="step-box">
+      <strong>Step 2 — Open Kiwi settings</strong>
+      Kiwi menu → Settings → Site Settings → find "steam-checker.html" or set all sites to allow.
+    </div>
+    <div class="step-box">
+      <strong>Step 3 — Use the Kiwi address bar trick</strong>
+      1. Go to store.steampowered.com and log in<br>
+      2. In the same tab, type the file path in address bar:<br>
+      <span style="color:#66c0f4;font-family:monospace;font-size:11px;">file:///sdcard/Download/steam-checker.html</span><br>
+      3. Now cookies from Steam are in the same browser session
+    </div>
+    <div class="step-box">
+      <strong>Best option — Netlify (2 minutes, free)</strong>
+      1. Go to <span style="color:#66c0f4">app.netlify.com/drop</span> in Kiwi<br>
+      2. Upload steam-checker.html<br>
+      3. Get a https:// link — open that link while logged into Steam<br>
+      4. CORS block gone permanently, works every time
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── utils ─────────────────────────────────────────────────────────────────────
+
+function normalise(raw) {
+  var clean = raw.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (clean.length === 15)
+    return clean.slice(0,5) + "-" + clean.slice(5,10) + "-" + clean.slice(10,15);
+  return raw.trim().toUpperCase();
+}
+
+function isValid(code) {
+  return /^[A-Z0-9]{5}-[A-Z0-9]{5}-[A-Z0-9]{5}$/.test(code);
+}
+
+function sleep(ms) { return new Promise(function(r){ setTimeout(r, ms); }); }
+
+function getCookie(name) {
+  var m = document.cookie.match(new RegExp("(?:^|;\\s*)" + name + "=([^;]*)"));
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
+// ── Steam call ────────────────────────────────────────────────────────────────
+
+async function checkSteam(code) {
+  var sessionid = getCookie("sessionid");
+  var body = "wallet_code=" + encodeURIComponent(code);
+  if (sessionid) body += "&sessionid=" + encodeURIComponent(sessionid);
+
+  try {
+    var resp = await fetch("https://store.steampowered.com/account/ajaxredeemwalletcode/", {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type":  "application/x-www-form-urlencoded",
+        "Referer":       "https://store.steampowered.com/account/redeemwalletcode/",
+        "Origin":        "https://store.steampowered.com"
+      },
+      body: body
+    });
+
+    var text = await resp.text();
+
+    if (!text || text.trim() === "") {
+      return { cls:"error", label:"⚠️ BLOCKED", msg:"Empty response — see How To Use tab to fix this." };
+    }
+
+    var json;
+    try { json = JSON.parse(text); }
+    catch(e) { return { cls:"error", label:"⚠️ PARSE ERROR", msg:"Bad response: " + text.slice(0,60) }; }
+
+    if (json.success === 42)
+      return { cls:"error", label:"⚠️ RATE LIMITED", msg:"Wait 30 seconds and try again." };
+
+    if (json.success !== 1)
+      return { cls:"error", label:"ERROR " + json.success, msg:"Steam error. Detail: " + json.detail };
+
+    switch (json.detail) {
+      case 1:
+      case 22: return { cls:"valid",   label:"✅ VALID",          msg:"Code is valid and active." };
+      case 15: return { cls:"invalid", label:"❌ USED",            msg:"Code already redeemed." };
+      case 21: return { cls:"invalid", label:"❌ INVALID",         msg:"Code does not exist." };
+      case 13: return { cls:"error",   label:"⚠️ NOT LOGGED IN",   msg:"Log into Steam in this browser first." };
+      case 53: return { cls:"valid",   label:"🔒 REGION LOCKED",   msg:"Valid but region restricted." };
+      case 17: return { cls:"error",   label:"⚠️ RATE LIMITED",    msg:"Too many checks. Wait 60 seconds." };
+      default: return { cls:"error",   label:"? CODE " + json.detail, msg:"Unknown Steam detail: " + json.detail };
+    }
+
+  } catch(err) {
+    return {
+      cls:"error", label:"⚠️ FAILED TO FETCH",
+      msg:"CORS block — page must be hosted on https://. See How To Use tab. (" + err.message + ")"
+    };
+  }
+}
+
+// ── single ────────────────────────────────────────────────────────────────────
+
+async function runSingle() {
+  var input = document.getElementById("single-input");
+  var box   = document.getElementById("single-result");
+  var btn   = document.getElementById("single-btn");
+  var code  = normalise(input.value);
+
+  if (!isValid(code)) {
+    box.className = "result show error";
+    box.textContent = "⚠️ Format must be XXXXX-XXXXX-XXXXX";
+    return;
+  }
+
+  box.className = "result show checking";
+  box.textContent = "⏳ Checking " + code + "…";
+  btn.disabled = true;
+
+  var r = await checkSteam(code);
+  box.className = "result show " + r.cls;
+  box.innerHTML = "<strong>" + r.label + "</strong> — " + r.msg;
+  btn.disabled = false;
+}
+
+document.getElementById("single-input").addEventListener("keydown", function(e) {
+  if (e.key === "Enter") runSingle();
+});
+
+// ── bulk ──────────────────────────────────────────────────────────────────────
+
+async function runBulk() {
+  var textarea  = document.getElementById("bulk-input");
+  var listEl    = document.getElementById("bulk-list");
+  var summaryEl = document.getElementById("summary");
+  var btn       = document.getElementById("bulk-btn");
+  var pw        = document.getElementById("progress-wrap");
+  var pf        = document.getElementById("progress-fill");
+  var pl        = document.getElementById("progress-label");
+
+  var codes = textarea.value.split("\n").map(normalise).filter(isValid);
+
+  if (!codes.length) {
+    listEl.style.display = "block";
+    listEl.innerHTML = '<div class="bulk-row" style="color:#ef9a9a;">No valid codes found. Format: XXXXX-XXXXX-XXXXX</div>';
+    summaryEl.style.display = "none";
+    return;
+  }
+
+  listEl.innerHTML = "";
+  listEl.style.display = "block";
+  summaryEl.style.display = "none";
+  pw.style.display = "block";
+  pf.style.width = "0%";
+  pl.textContent = "0 / " + codes.length;
+  btn.disabled = true;
+
+  codes.forEach(function(code, i) {
+    var row = document.createElement("div");
+    row.className = "bulk-row";
+    row.innerHTML =
+      '<span style="color:#c6d4df">' + code + '</span>' +
+      '<span class="badge checking" id="badge-' + i + '">…</span>';
+    listEl.appendChild(row);
+  });
+
+  var validCount = 0, invalidCount = 0;
+
+  for (var i = 0; i < codes.length; i++) {
+    var r = await checkSteam(codes[i]);
+    var badge = document.getElementById("badge-" + i);
+    badge.className = "badge " + r.cls;
+    badge.textContent = r.label;
+    if (r.cls === "valid") validCount++;
+    else invalidCount++;
+    pf.style.width = ((i + 1) / codes.length * 100) + "%";
+    pl.textContent = (i + 1) + " / " + codes.length;
+    await sleep(700);
+  }
+
+  pw.style.display = "none";
+  summaryEl.style.display = "block";
+  summaryEl.textContent = codes.length + " checked — ✅ " + validCount + " valid · ❌ " + invalidCount + " invalid/used";
+  btn.disabled = false;
+}
+
+// ── tabs ──────────────────────────────────────────────────────────────────────
+
+function switchTab(name) {
+  var names = ["single","bulk","guide"];
+  document.querySelectorAll(".tab").forEach(function(t, i) {
+    t.classList.toggle("active", names[i] === name);
+  });
+  names.forEach(function(n) {
+    document.getElementById("pane-" + n).classList.toggle("active", n === name);
+  });
+}
+</script>
+</body>
+</html>
